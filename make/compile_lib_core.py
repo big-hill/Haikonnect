@@ -34,6 +34,12 @@ class Compile(compile_generic.Compile):
             conf["cpp_library_paths"]=conf["cpp_include_paths"]
             conf["frameworks"]=["ApplicationServices","SystemConfiguration"]
             conf["libraries"]=[]
+        elif osn=="haiku":
+            conf={}
+            conf["outname"]="dwaglib.so"
+            conf["cpp_include_paths"]=[]
+            conf["cpp_library_paths"]=[]
+            conf["libraries"]=[]
         return conf
     
     
@@ -49,4 +55,4 @@ if __name__ == "__main__":
     
     
     
-    
+

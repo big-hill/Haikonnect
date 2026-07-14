@@ -37,6 +37,10 @@ def get_instance():
                 oret = Linux()
             elif utils.is_mac():
                 oret = Mac()
+            elif utils.is_haiku():
+                oret = Haiku()
+            if oret is None:
+                raise Exception("Unsupported operating system")
             oret.load_library();
             _nativemap["instance"]=oret
     finally:
@@ -63,6 +67,8 @@ def get_filename_conf(cnflib):
             sfx="linux"
         elif utils.is_mac():
             sfx="mac"
+        elif utils.is_haiku():
+            sfx="haiku"
         else:
             return None
         if "filename_"+sfx in cnflib:
@@ -111,7 +117,7 @@ def _load_lib_obj(name):
             retlib = ctypes.CDLL("..\\make\\native\\" + name)
         if retlib is None:
             raise Exception("Missing library " + name + ".")
-    elif utils.is_linux():
+    elif utils.is_linux() or utils.is_haiku():
         if not utils.path_exists(".srcmode"):
             retlib  = ctypes.CDLL("native/" + name, ctypes.RTLD_GLOBAL)
         else: 
@@ -135,7 +141,7 @@ def _unload_lib_obj(olib):
                 import _ctypes
                 _ctypes.FreeLibrary(olib._handle)
                 del olib
-            elif utils.is_linux():
+            elif utils.is_linux() or utils.is_haiku():
                 import _ctypes
                 _ctypes.dlclose(olib._handle)
                 del olib
@@ -250,7 +256,7 @@ class Linux():
     
     def task_kill(self, pid) :
         try:
-            os.kill(pid, -9)
+            os.kill(pid, signal.SIGKILL)
         except OSError:
             return False
         return True
@@ -514,6 +520,15 @@ class Linux():
         except:
             None
         return altret
+
+
+class Haiku(Linux):
+
+    def is_gui(self):
+        return True
+
+    def reboot(self):
+        os.system("shutdown -r")
 
 class Mac():
         

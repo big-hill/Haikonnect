@@ -2,5 +2,6 @@
 	"filename_win": "dwagscreencapture.dll",
 	"filename_linux": "dwagscreencapture.so",
 	"filename_mac": "dwagscreencapture.dylib",
+	"filename_haiku": "dwagscreencapture.so",
 	"lib_dependencies": ["stdcpp","z","turbojpeg"]
 }

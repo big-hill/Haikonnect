@@ -47,12 +47,15 @@ class FileSystem():
     
     def __init__(self, agent_main):
         self._agent_main=agent_main
+        self._osnative = None
         if utils.is_windows():
             self._osnative = Windows(self._agent_main)
-        elif utils.is_linux():
+        elif utils.is_linux() or utils.is_haiku():
             self._osnative = Linux()
         elif utils.is_mac():
             self._osnative = Mac()
+        if self._osnative is None:
+            raise RuntimeError("Unsupported operating system")
     
     def destroy(self,bforce):
         if self._osnative is not None:

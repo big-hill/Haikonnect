@@ -85,6 +85,11 @@ class ProcessCaptureScreen(threading.Thread):
                     loadseq.append(capdef)
                 else:
                     loadseq.append("dwagscreencapture" + self._process._force_capturescreenlib + ".so")
+            elif agent.is_haiku():
+                if self._process._force_capturescreenlib is None:
+                    loadseq.append("dwagscreencapturehaiku.so")
+                else:
+                    loadseq.append("dwagscreencapture" + self._process._force_capturescreenlib + ".so")
                 
             
             #CHECK fallback args
@@ -991,4 +996,3 @@ class ProcessCapture(ipc.ChildProcessThread):
         self._sound_thread.destroy()
         self._sound_thread.join(2)        
         self._write_debug("Term capture process.")
-

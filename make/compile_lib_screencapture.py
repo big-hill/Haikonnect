@@ -39,6 +39,13 @@ class Compile(compile_generic.Compile):
             #conf["frameworks"]=["IOKit","Carbon"]
             conf["frameworks"]=["SystemConfiguration","IOKit","Carbon","AppKit"] #TO REMOVE 16/08/2021 (SystemConfiguration)
             conf["cpp_compiler_flags"]="-DOS_MAIN"
+        elif osn=="haiku":
+            conf={}
+            conf["outname"]="dwagscreencapture.so"
+            conf["cpp_include_paths"]=[]
+            conf["cpp_library_paths"]=[]
+            conf["libraries"]=["z", "turbojpeg"]
+            conf["cpp_compiler_flags"]="-DOS_MAIN"
         return conf
         
     def before_copy_to_native(self,osn):
@@ -58,4 +65,4 @@ if __name__ == "__main__":
     
     
     
-    
+

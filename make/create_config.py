@@ -104,7 +104,11 @@ if __name__ == "__main__":
                 config['enabled']=True
                 config['debug_indentation_max']=0                
                 config['debug_mode']=True
-                config['develop_mode']=True                
+                config['develop_mode']=True
+                if sys.platform.lower().startswith('haiku'):
+                    config['updates_auto']=False
+                    config['listener_http_enable']=False
+                    config['desktop']={"sound_enable": False}
                 config['proxy_type']=PROXY_TYPE
                 config['proxy_host']=PROXY_HOST
                 config['proxy_port']=PROXY_PORT   
@@ -123,4 +127,4 @@ if __name__ == "__main__":
     
     
     
-    
+

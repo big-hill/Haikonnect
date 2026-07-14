@@ -30,6 +30,7 @@ PATHTMP="tmp"
 _biswindows=(platform.system().lower().find("window") > -1)
 _bislinux=(platform.system().lower().find("linux") > -1)
 _bismac=(platform.system().lower().find("darwin") > -1)
+_bishaiku=(platform.system().lower().find("haiku") > -1)
 
 
 def is_windows():
@@ -40,6 +41,9 @@ def is_linux():
 
 def is_mac():
     return _bismac
+
+def is_haiku():
+    return _bishaiku
 
 def is_py2():
     return sys.version_info[0]==2
@@ -176,7 +180,7 @@ def system_exec(cmd,wkdir):
     if len(e)>0:
         print("Error:\n" + bytes_to_str(e,"utf8"))
         #return False
-    return True            
+    return p.returncode == 0
 
 def remove_from_native(pathnative, mainconf):
     if is_windows():        
@@ -187,10 +191,14 @@ def remove_from_native(pathnative, mainconf):
         if not "linux" in mainconf:
             return None
         cconf = mainconf["linux"]
-    elif is_mac():    
+    elif is_mac():
         if not "mac" in mainconf:
             return None
         cconf = mainconf["mac"]
+    elif is_haiku():
+        if not "haiku" in mainconf:
+            return None
+        cconf = mainconf["haiku"]
     psrc = pathnative + os.sep + cconf["outname"]
     if os.path.exists(psrc):
         os.remove(psrc)
@@ -205,10 +213,14 @@ def copy_to_native(pathnative, mainconf):
         if not "linux" in mainconf:
             return None
         cconf = mainconf["linux"]
-    elif osn=="mac":    
+    elif osn=="mac":
         if not "mac" in mainconf:
             return None
         cconf = mainconf["mac"]
+    elif osn=="haiku":
+        if not "haiku" in mainconf:
+            return None
+        cconf = mainconf["haiku"]
     
     pth=mainconf["pathdst"]
     name=cconf["outname"]
@@ -313,6 +325,20 @@ def compile_lib(mainconf):
         scppcmd=cconf.get("cpp_command","g++")
         cconf["cpp_compiler"]=scppcmd + " " + cflgs + " -DOS_MAC %INCLUDE_PATH% -O3 -Wall -c -fmessage-length=0 -o \"%NAMEO%\" \"%NAMECPP%\""
         cconf["linker"]=scppcmd + " " + lflgs + " %LIBRARY_PATH% -dynamiclib -o %OUTNAME% %SRCFILES% %LIBRARIES% %FRAMEWORKS%"
+    elif osn=="haiku":
+        if not "haiku" in mainconf:
+            print("NO CONFIGURATION.")
+            return None
+        cconf = mainconf["haiku"]
+        if "cpp_compiler_flags" in cconf:
+            cflgs=cconf["cpp_compiler_flags"]
+        if "linker_flags" in cconf:
+            lflgs=cconf["linker_flags"]
+        scppcmd=cconf.get("cpp_command","g++")
+        sccmd=cconf.get("c_command","gcc")
+        cconf["cpp_compiler"]=scppcmd + " " + cflgs + " -DOS_HAIKU %INCLUDE_PATH% -O2 -Wall -Wextra -c -fmessage-length=0 -fPIC -MMD -MP -MF\"%NAMED%\" -MT\"%NAMEO%\" -o \"%NAMEO%\" \"%NAMECPP%\""
+        cconf["c_compiler"]=sccmd + " " + cflgs + " -DOS_HAIKU %INCLUDE_PATH% -O2 -Wall -Wextra -c -fmessage-length=0 -fPIC -MMD -MP -MF\"%NAMED%\" -MT\"%NAMEO%\" -o \"%NAMEO%\" \"%NAMECPP%\""
+        cconf["linker"]=scppcmd + " " + lflgs + " %LIBRARY_PATH% -shared -o %OUTNAME% %SRCFILES% %OTHER_RESOURCES% %LIBRARIES%"
     else:
         raise Exception("Invalid os: " + str(osn))
     
@@ -338,7 +364,7 @@ def compile_lib(mainconf):
     scmd=cconf["linker"]
     apprs=""
     if "cpp_library_paths" in cconf:
-        for i in range(len(cconf["cpp_include_paths"])):
+        for i in range(len(cconf["cpp_library_paths"])):
             if i>0:
                 apprs+=" "
             apprs+="-L\"" + os.path.abspath(cconf["cpp_library_paths"][i]) + "\""
@@ -396,4 +422,4 @@ def file_open(filename, mode='rb', encoding=None, errors='strict'):
     return codecs.open(filename, mode, encoding, errors)
 #USED BY DETECTINFO
 
-    
+

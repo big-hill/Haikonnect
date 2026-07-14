@@ -26,6 +26,7 @@ line_sep=os.linesep
 _biswindows=(platform.system().lower().find("window") > -1)
 _bislinux=(platform.system().lower().find("linux") > -1)
 _bismac=(platform.system().lower().find("darwin") > -1)
+_bishaiku=(platform.system().lower().find("haiku") > -1)
 
 
 def is_py2():
@@ -81,6 +82,9 @@ def is_linux():
 
 def is_mac():
     return _bismac
+
+def is_haiku():
+    return _bishaiku
 
 def exception_to_string(e):
     bamsg=False;
@@ -578,7 +582,6 @@ class Counter:
             self._current_time=get_time()
         #print("self._current_elapsed(" + str(self) + "): " +  str(self._current_elapsed))
         return self._current_elapsed
-
 
 
 

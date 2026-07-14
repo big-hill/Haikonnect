@@ -3,7 +3,7 @@
  Public License, v. 2.0. If a copy of the MPL was not distributed
  with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-#if defined OS_LINUX
+#if defined OS_LINUX || defined OS_HAIKU
 
 #include "main.h"
 
@@ -48,7 +48,7 @@ int semaphoreInitialize(SEMAPHORE_DEF *semdef) {
 			semdef->sem=NULL;
 			return -1;
 		}
-		if (ftruncate(semdef->fd, sizeof(sem_t*)) == -1) {
+		if (ftruncate(semdef->fd, sizeof(sem_t)) == -1) {
 			close(semdef->fd);
 			semdef->name=NULL;
 			semdef->fd=-1;
@@ -58,7 +58,7 @@ int semaphoreInitialize(SEMAPHORE_DEF *semdef) {
 		if (semdef->mode!=-1){
 			fchmod(semdef->fd,semdef->mode);
 		}
-		semdef->sem = (sem_t*)mmap(NULL, sizeof(sem_t*), PROT_READ | PROT_WRITE, MAP_SHARED, semdef->fd, 0);
+		semdef->sem = (sem_t*)mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED, semdef->fd, 0);
 		if (semdef->sem==MAP_FAILED){
 			close(semdef->fd);
 			shm_unlink(semdef->name);
@@ -83,7 +83,7 @@ int semaphoreInitialize(SEMAPHORE_DEF *semdef) {
 			semdef->sem=NULL;
 			return -1;
 		}
-		semdef->sem = (sem_t*)mmap(NULL, sizeof(sem_t*), PROT_READ | PROT_WRITE, MAP_SHARED, semdef->fd, 0);
+		semdef->sem = (sem_t*)mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED, semdef->fd, 0);
 		if (semdef->sem==MAP_FAILED){
 			close(semdef->fd);
 			semdef->name=NULL;

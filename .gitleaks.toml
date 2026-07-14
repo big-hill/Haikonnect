@@ -1,0 +1,12 @@
+title = "BeRD secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Upstream Windows API function name, not a credential"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^ui/installer\.py$''']
+regexes = ['''NativeWindowsRegCloseKey''']

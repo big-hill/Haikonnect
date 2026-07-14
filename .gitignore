@@ -1,4 +1,9 @@
 .hg*
+.env
+.env.*
+!.env.example
+._*
+*.hpkg
 *.pyc
 *.lock
 *.log
@@ -7,7 +12,9 @@
 *.stop
 *.shm
 *.DS_Store
+*.token
 core/config.json
+github/pat.md
 make/native/*
 make/tmp/*
 */.settings/*

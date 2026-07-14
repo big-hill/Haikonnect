@@ -66,6 +66,8 @@ class Compile():
             osn="linux"                        
         elif utils.is_mac():
             osn="mac"
+        elif utils.is_haiku():
+            osn="haiku"
         if self._arch is not None: 
             if self._arch.startswith("win_"):
                 osn="windows"
@@ -73,6 +75,8 @@ class Compile():
                 osn="linux"
             elif self._arch.startswith("mac_"):
                 osn="mac"
+            elif self._arch.startswith("haiku_"):
+                osn="haiku"
             
         if osn is not None:
             self._conf["os"]=osn            
@@ -123,14 +127,15 @@ class Compile():
                 self.before_copy_to_native(osn)  
                 utils.copy_to_native(self.get_path_native(),self._conf)
             utils.info("END " + self.get_name())
+            return True
         except Exception as e:
             se=str(e)
             if se=="Compiler error." or se=="Linker error.":
                 utils.info("ERROR " + self.get_name() + ": " + se)
-                return
+                return False
             else:
                 raise e;        
         
         
         
-        
+

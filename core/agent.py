@@ -39,6 +39,9 @@ def is_linux():
 def is_mac():
     return utils.is_mac()
 
+def is_haiku():
+    return utils.is_haiku()
+
 def get_os_type():
     if is_linux():
         return "Linux"
@@ -46,6 +49,8 @@ def get_os_type():
         return "Windows"
     elif is_mac():
         return "Mac"
+    elif is_haiku():
+        return "Haiku"
     else:
         return "Unknown"
 
@@ -56,6 +61,8 @@ def get_os_type_code():
         return 1
     elif is_mac():
         return 2
+    elif is_haiku():
+        return -1
     else:
         return -1
 

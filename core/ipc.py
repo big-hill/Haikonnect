@@ -1157,14 +1157,20 @@ class MemMapIPC():
             self.fpath=IPC_PATH + utils.path_sep + self.fname + ".mmp"
             if not utils.path_exists(self.fpath):
                 with utils.file_open(self.fpath, "wb") as f:
-                    f.write(" "*self.size)
+                    f.truncate(self.size)
                 _fix_perm_path(self.fpath,fixperm)
                 self.file=utils.file_open(self.fpath, "r+b")
                 self.ftype="F"
                 self._prepare_map()
                 break
-    
+
     def _create(self):
+        # Haiku's launch_daemon can start services without the conventional
+        # descriptor layout expected by the POSIX shared-memory path. A
+        # file-backed mmap is equally shareable and survives that environment.
+        if utils.is_haiku():
+            self._create_disk(self.fixperm)
+            return
         try:
             self._create_mem(self.fixperm)
         except:
@@ -1759,6 +1765,9 @@ class Process():
             elif "DYLD_LIBRARY_PATH" in os.environ:
                 libenv["DYLD_LIBRARY_PATH"]=os.environ["DYLD_LIBRARY_PATH"]
             self._process=subprocess.Popen(args, env=libenv)
+            self._ppid=self._process.pid
+        elif utils.is_haiku():
+            self._process=subprocess.Popen(args, env=os.environ.copy())
             self._ppid=self._process.pid
         else:
             self._process=subprocess.Popen(args)
@@ -2381,7 +2390,9 @@ class ProcessInActiveConsole(Process):
                     #print("_detect_console_:" + ar["cktype"] + " " + str(ar["ckvalue"]))
                     return ar
             except:
-                None 
+                None
+        elif utils.is_haiku():
+            return {"uid": os.getuid()}
             
         return None
                     
@@ -2509,6 +2520,9 @@ class ProcessInActiveConsole(Process):
                     libenv["DYLD_LIBRARY_PATH"]=os.environ["DYLD_LIBRARY_PATH"]
                 self._process=subprocess.Popen(args, env=libenv)
                 self._ppid=self._process.pid
+        elif utils.is_haiku():
+            self._process=subprocess.Popen(args, env=os.environ.copy())
+            self._ppid=self._process.pid
                 
             
     def _start_ipc(self):

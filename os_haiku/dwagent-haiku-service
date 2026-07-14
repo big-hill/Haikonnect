@@ -1,0 +1,38 @@
+#!/bin/sh
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file, You can
+# obtain one at http://mozilla.org/MPL/2.0/.
+# DWService Agent user-session supervisor for Haiku.
+
+APP_DIR="/boot/home/config/non-packaged/apps/DWService"
+SETTINGS_DIR="/boot/home/config/settings/DWService"
+LOG_DIR="/boot/home/config/cache/DWService"
+
+HOME="/boot/home"
+export HOME
+
+mkdir -p "$SETTINGS_DIR" "$LOG_DIR"
+chmod 700 "$SETTINGS_DIR" "$LOG_DIR"
+
+if [ ! -s "$SETTINGS_DIR/input.token" ]; then
+	python3 -c 'import secrets; print(secrets.token_hex(32))' > "$SETTINGS_DIR/input.token"
+	chmod 600 "$SETTINGS_DIR/input.token"
+fi
+
+trap 'exit 0' INT TERM
+delay=2
+while true; do
+	cd "$APP_DIR/core" || exit 1
+	python3 agent.py -filelog -noctrlfile </dev/null >> "$LOG_DIR/service.log" 2>&1
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		delay=2
+	fi
+	sleep "$delay"
+	if [ "$delay" -lt 300 ]; then
+		delay=$((delay * 2))
+		if [ "$delay" -gt 300 ]; then
+			delay=300
+		fi
+	fi
+done

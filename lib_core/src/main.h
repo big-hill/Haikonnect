@@ -11,7 +11,7 @@ with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include <userenv.h>
 typedef BOOL (WINAPI *IWinStationConnectW)(HANDLE server, ULONG connectSessionId,ULONG activeSessionId, PCWSTR password, ULONG unknown);
 #endif
-#if defined OS_LINUX
+#if defined OS_LINUX || defined OS_HAIKU
 #include <iostream>
 #include <fcntl.h>
 #include <semaphore.h>
@@ -92,4 +92,3 @@ extern "C"{
 }
 
 #endif /* MAIN_H_ */
-

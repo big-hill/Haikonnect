@@ -20,6 +20,9 @@ def is_linux():
 def is_mac():
     return (platform.system().lower().find("darwin") > -1)
 
+def is_haiku():
+    return (platform.system().lower().find("haiku") > -1)
+
 def is_os_32bit():
     return not sys.maxsize > 2**32
 
@@ -92,7 +95,12 @@ def get_native_suffix():
                     if is_os_64bit():
                         return "mac_x86_64"
                     elif is_os_32bit():
-                        return "mac_x86_32"                
+                        return "mac_x86_32"
+                elif is_haiku():
+                    if is_os_64bit():
+                        return "haiku_x86_64"
+                    elif is_os_32bit():
+                        return "haiku_x86_32"
             elif is_linux() and len(sapp)>=3 and sapp[0:3].lower()=="arm":
                 try:
                     if is_os_64bit():
@@ -120,4 +128,4 @@ def get_native_suffix():
 
 if __name__ == "__main__":
     print(get_native_suffix())
-    
+

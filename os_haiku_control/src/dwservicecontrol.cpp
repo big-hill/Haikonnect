@@ -199,12 +199,7 @@ public:
 		}
 	}
 
-	static BeRDAgentView* Instantiate(BMessage* archive)
-	{
-		if (!validate_instantiation(archive, "BeRDAgentView"))
-			return NULL;
-		return new BeRDAgentView(archive);
-	}
+	static BeRDAgentView* Instantiate(BMessage* archive);
 
 	virtual status_t Archive(BMessage* archive, bool deep = true) const
 	{
@@ -473,6 +468,15 @@ private:
 	BMessageRunner* fRunner;
 	thread_id fActionThread;
 };
+
+
+BeRDAgentView*
+BeRDAgentView::Instantiate(BMessage* archive)
+{
+	if (!validate_instantiation(archive, "BeRDAgentView"))
+		return NULL;
+	return new BeRDAgentView(archive);
+}
 
 
 extern "C" _EXPORT BView*

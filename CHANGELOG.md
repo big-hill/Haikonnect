@@ -11,6 +11,8 @@ All notable BeRD changes will be documented here.
 - Authenticated Haiku input-server devices for pointer and keyboard control.
 - Per-user launch service, persistent BeRD Agent Deskbar status replicant and
   runtime doctor.
+- Background-flagged per-user Python launcher so the agent remains visible in
+  process monitors without appearing as a separate Deskbar application.
 - Haiku-compatible Filesystem backend and file-backed inter-process screen maps.
 - Repository security policy, contribution guide, CI and secret scanning.
 

@@ -6,16 +6,20 @@ set -e
 
 APP_DIR="/boot/home/config/non-packaged/apps/DWService"
 ADDON_DIR="/boot/home/config/non-packaged/add-ons/input_server/devices"
+BIN_DIR="/boot/home/config/non-packaged/bin"
 LAUNCH_DIR="/boot/home/config/settings/launch"
 SETTINGS_DIR="/boot/home/config/settings/DWService"
 DESKBAR_DIR="/boot/home/config/non-packaged/data/deskbar/menu/Applications"
 LOG_DIR="/boot/home/config/cache/DWService"
 CONTROL_APP="$APP_DIR/BeRDAgent"
 CONTROL_TEMP="$APP_DIR/.BeRDAgent.new.$$"
+RUNTIME_PYTHON="$BIN_DIR/berd-python3"
+RUNTIME_TEMP="$BIN_DIR/.berd-python3.new.$$"
+APP_FLAGS_FILE="$LOG_DIR/.background-app-flags.$$"
 
 cleanup()
 {
-	rm -f "$CONTROL_TEMP"
+	rm -f "$CONTROL_TEMP" "$RUNTIME_TEMP" "$APP_FLAGS_FILE"
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -32,8 +36,26 @@ if [ ! -x make/native/BeRDAgent ]; then
 	exit 1
 fi
 
-mkdir -p "$ADDON_DIR" "$LAUNCH_DIR" "$SETTINGS_DIR" "$DESKBAR_DIR" "$LOG_DIR"
+mkdir -p "$ADDON_DIR" "$BIN_DIR" "$LAUNCH_DIR" "$SETTINGS_DIR" \
+	"$DESKBAR_DIR" "$LOG_DIR"
 chmod 700 "$SETTINGS_DIR" "$LOG_DIR"
+
+# B_MULTIPLE_LAUNCH | B_BACKGROUND_APP is 0x5. A private copy of Haiku's tiny
+# Python launcher preserves its normal multi-process behavior while preventing
+# capture BApplications from becoming Deskbar entries. The process remains
+# visible to process monitors and the system Python executable is not changed.
+PYTHON_SOURCE=$(command -v python3 || true)
+if [ -z "$PYTHON_SOURCE" ] || [ ! -x "$PYTHON_SOURCE" ]; then
+	echo "Missing python3 runtime"
+	exit 1
+fi
+printf '\005\000\000\000' > "$APP_FLAGS_FILE"
+cp "$PYTHON_SOURCE" "$RUNTIME_TEMP"
+chmod 755 "$RUNTIME_TEMP"
+addattr -t mime BEOS:TYPE application/x-vnd.Be-elfexecutable "$RUNTIME_TEMP"
+addattr -f "$APP_FLAGS_FILE" -c APPF BEOS:APP_FLAGS "$RUNTIME_TEMP"
+mv -f "$RUNTIME_TEMP" "$RUNTIME_PYTHON"
+
 cp make/native/dwservice_remote_input "$ADDON_DIR/dwservice_remote_input"
 chmod 755 "$ADDON_DIR/dwservice_remote_input"
 cp os_haiku/dwservice_agent.launch "$LAUNCH_DIR/dwservice_agent"
@@ -53,6 +75,9 @@ mv -f "$CONTROL_TEMP" "$CONTROL_APP"
 if command -v mimeset >/dev/null 2>&1; then
 	mimeset "$CONTROL_APP" >/dev/null 2>&1 || true
 fi
+# The short-lived native controller is a single-launch background application.
+printf '\004\000\000\000' > "$APP_FLAGS_FILE"
+addattr -f "$APP_FLAGS_FILE" -c APPF BEOS:APP_FLAGS "$CONTROL_APP"
 
 # Migrate the old controller name without touching unrelated Deskbar items.
 rm -f "$APP_DIR/DWService" "$DESKBAR_DIR/DWService"

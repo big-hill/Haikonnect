@@ -74,6 +74,8 @@ or stops the service, and shows project information.
 The Python agent is launched with no terminal, window or separate Deskbar app
 entry. It is intentionally still visible in Haiku's ProcessController/Team
 Monitor so the remote-control process is never concealed from the local user.
+The installer copies Haiku's small Python launcher to the per-user bin folder
+and marks only that copy as `B_BACKGROUND_APP`; system Python is not modified.
 
 A reboot/login is required for `input_server` and the user launch daemon to
 discover the new files. After reboot, verify that the agent is online and that

@@ -1,0 +1,118 @@
+#!/bin/sh
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file, You can
+# obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Lifecycle helper for the BeRD Agent Deskbar replicant. Haiku's launch_roster
+# records the requested state for a shell service, but does not itself signal
+# that shell. The supervisor and child IDs below are published by the service
+# in a user-private directory; no process-name matching is used.
+
+SERVICE="x-vnd.DWService-Agent"
+LOG_DIR="/boot/home/config/cache/DWService"
+STATUS_FILE="$LOG_DIR/agent.status"
+SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"
+
+is_number()
+{
+	case "$1" in
+		""|*[!0-9]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+read_status()
+{
+	state=""
+	agent_pid=""
+	if [ -r "$STATUS_FILE" ]; then
+		IFS=' ' read -r state agent_pid < "$STATUS_FILE"
+	fi
+}
+
+job_is_running()
+{
+	launch_roster info "$SERVICE" 2>/dev/null \
+		| grep -q "running = bool(true)"
+}
+
+write_stopped()
+{
+	mkdir -p "$LOG_DIR"
+	chmod 700 "$LOG_DIR"
+	temporary="$STATUS_FILE.control.$$"
+	umask 077
+	printf '%s\n' "stopped" > "$temporary"
+	mv -f "$temporary" "$STATUS_FILE"
+}
+
+start_agent()
+{
+	if ! launch_roster start "$SERVICE"; then
+		echo "BeRD Agent: launch_roster could not start the service." >&2
+		return 1
+	fi
+
+	tries=0
+	while [ "$tries" -lt 15 ]; do
+		read_status
+		if job_is_running && [ "$state" = "running" ] \
+				&& is_number "$agent_pid" \
+				&& kill -0 "$agent_pid" 2>/dev/null; then
+			return 0
+		fi
+		tries=$((tries + 1))
+		sleep 1
+	done
+
+	echo "BeRD Agent: service did not reach running state." >&2
+	return 1
+}
+
+stop_agent()
+{
+	if ! launch_roster stop "$SERVICE"; then
+		echo "BeRD Agent: launch_roster could not stop the service." >&2
+		return 1
+	fi
+
+	supervisor_pid=""
+	if [ -r "$SUPERVISOR_FILE" ]; then
+		IFS= read -r supervisor_pid < "$SUPERVISOR_FILE"
+	fi
+	read_status
+
+	if is_number "$supervisor_pid" && kill -0 "$supervisor_pid" 2>/dev/null; then
+		kill -TERM "$supervisor_pid"
+	fi
+	if [ "$state" = "running" ] && is_number "$agent_pid" \
+			&& kill -0 "$agent_pid" 2>/dev/null; then
+		kill -TERM "$agent_pid" 2>/dev/null || true
+	fi
+
+	tries=0
+	while [ "$tries" -lt 15 ]; do
+		if ! job_is_running; then
+			write_stopped
+			return 0
+		fi
+		tries=$((tries + 1))
+		sleep 1
+	done
+
+	echo "BeRD Agent: service did not stop within 15 seconds." >&2
+	return 1
+}
+
+case "$1" in
+	start)
+		start_agent
+		;;
+	stop)
+		stop_agent
+		;;
+	*)
+		echo "Usage: $0 {start|stop}" >&2
+		exit 2
+		;;
+esac

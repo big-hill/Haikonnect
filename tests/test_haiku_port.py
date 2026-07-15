@@ -27,6 +27,11 @@ from app_shell.shell import HAIKU_DEFAULT_PATH, LinuxMac
 
 class HaikuPortTests(unittest.TestCase):
 
+    @staticmethod
+    def _read(*parts):
+        with open(os.path.join(ROOT, *parts), encoding="utf-8") as source:
+            return source.read()
+
     def test_native_suffix_for_haiku_x86_64(self):
         with mock.patch.object(detectinfo.platform, "system", return_value="Haiku"), \
                 mock.patch.object(detectinfo.platform, "machine", return_value="x86_64"):
@@ -95,6 +100,58 @@ class HaikuPortTests(unittest.TestCase):
     def test_haiku_shell_fallback_path_contains_system_bin(self):
         self.assertIn("/boot/system/bin", HAIKU_DEFAULT_PATH.split(":"))
         self.assertIn("/bin", HAIKU_DEFAULT_PATH.split(":"))
+
+    def test_deskbar_controller_is_a_persistent_replicant(self):
+        source = self._read(
+            "os_haiku_control", "src", "dwservicecontrol.cpp")
+
+        self.assertIn("instantiate_deskbar_item", source)
+        self.assertIn('archive->AddString("add_on", kSignature)', source)
+        self.assertIn('archive->AddString("class", "BeRDAgentView")', source)
+        self.assertIn("BMessageRunner", source)
+        self.assertIn("deskbar.AddItem(&info.ref)", source)
+        self.assertIn("deskbar.RemoveItem(kDeskbarItemName)", source)
+        self.assertNotIn('popen("ps"', source)
+
+    def test_deskbar_menu_exposes_required_actions(self):
+        source = self._read(
+            "os_haiku_control", "src", "dwservicecontrol.cpp")
+
+        for label in ("Dashboard", "Start Agent", "Stop Agent", "Log",
+                      "About BeRD"):
+            self.assertIn('"{}"'.format(label), source)
+        for status in ("Running and configured", "Not configured", "Error"):
+            self.assertIn('"{}"'.format(status), source)
+
+    def test_supervisor_publishes_pid_status_without_a_window(self):
+        supervisor = self._read("os_haiku", "dwagent-haiku-service")
+
+        self.assertIn('STATUS_FILE="$LOG_DIR/agent.status"', supervisor)
+        self.assertIn('SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"', supervisor)
+        self.assertIn('write_supervisor_pid', supervisor)
+        self.assertIn('write_status "running $child_pid"', supervisor)
+        self.assertIn('write_status "error $status"', supervisor)
+        self.assertIn("</dev/null", supervisor)
+        self.assertIn("python3 agent.py -filelog -noctrlfile", supervisor)
+
+    def test_installer_uses_berd_identity_and_scoped_replicant_removal(self):
+        installer = self._read("os_haiku", "install-local.sh")
+        compiler = self._read("make", "compile_os_haiku_control.py")
+
+        self.assertIn('CONTROL_APP="$APP_DIR/BeRDAgent"', installer)
+        self.assertIn('"$CONTROL_APP" --remove', installer)
+        self.assertIn('"$CONTROL_APP" --install', installer)
+        self.assertIn('"$DESKBAR_DIR/BeRD Agent"', installer)
+        self.assertIn('"BeRDAgent"', compiler)
+
+    def test_control_helper_targets_only_published_process_ids(self):
+        helper = self._read("os_haiku", "berd-agent-control")
+
+        self.assertIn('launch_roster stop "$SERVICE"', helper)
+        self.assertIn('kill -TERM "$supervisor_pid"', helper)
+        self.assertIn('kill -TERM "$agent_pid"', helper)
+        self.assertIn('SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"', helper)
+        self.assertNotIn("ps |", helper)
 
 
 if __name__ == "__main__":

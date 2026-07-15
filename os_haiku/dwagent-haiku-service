@@ -7,6 +7,8 @@
 APP_DIR="/boot/home/config/non-packaged/apps/DWService"
 SETTINGS_DIR="/boot/home/config/settings/DWService"
 LOG_DIR="/boot/home/config/cache/DWService"
+STATUS_FILE="$LOG_DIR/agent.status"
+SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"
 
 HOME="/boot/home"
 PATH="/boot/home/config/non-packaged/bin:/boot/home/config/bin:/boot/system/non-packaged/bin:/boot/system/bin:/bin"
@@ -15,17 +17,57 @@ export HOME PATH
 mkdir -p "$SETTINGS_DIR" "$LOG_DIR"
 chmod 700 "$SETTINGS_DIR" "$LOG_DIR"
 
+write_status()
+{
+	temporary="$STATUS_FILE.$$"
+	umask 077
+	printf '%s\n' "$1" > "$temporary"
+	mv -f "$temporary" "$STATUS_FILE"
+}
+
+write_supervisor_pid()
+{
+	temporary="$SUPERVISOR_FILE.$$"
+	umask 077
+	printf '%s\n' "$$" > "$temporary"
+	mv -f "$temporary" "$SUPERVISOR_FILE"
+}
+
 if [ ! -s "$SETTINGS_DIR/input.token" ]; then
 	python3 -c 'import secrets; print(secrets.token_hex(32))' > "$SETTINGS_DIR/input.token"
 	chmod 600 "$SETTINGS_DIR/input.token"
 fi
 
-trap 'exit 0' INT TERM
+child_pid=""
+stop_agent()
+{
+	if [ -n "$child_pid" ]; then
+		kill "$child_pid" 2>/dev/null || true
+		wait "$child_pid" 2>/dev/null || true
+		child_pid=""
+	fi
+	rm -f "$SUPERVISOR_FILE"
+	write_status "stopped"
+	exit 0
+}
+
+trap stop_agent HUP INT TERM
+write_supervisor_pid
 delay=2
 while true; do
-	cd "$APP_DIR/core" || exit 1
-	python3 agent.py -filelog -noctrlfile </dev/null >> "$LOG_DIR/service.log" 2>&1
+	if ! cd "$APP_DIR/core"; then
+		rm -f "$SUPERVISOR_FILE"
+		write_status "error 127"
+		exit 1
+	fi
+	write_status "starting"
+	python3 agent.py -filelog -noctrlfile </dev/null >> "$LOG_DIR/service.log" 2>&1 &
+	child_pid=$!
+	write_status "running $child_pid"
+	wait "$child_pid"
 	status=$?
+	child_pid=""
+	write_status "error $status"
 	if [ "$status" -eq 0 ]; then
 		delay=2
 	fi

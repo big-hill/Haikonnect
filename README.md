@@ -18,7 +18,7 @@ The port has been compiled and runtime-tested on real x86_64 Haiku hardware:
 - native screen capture and cursor metadata;
 - remote pointer and keyboard input through a Haiku input-server add-on;
 - clipboard integration and filesystem access;
-- a per-user launch service and native Deskbar controller;
+- a per-user launch service and automatically restored native Deskbar icon;
 - clean restart and reconnect after reboot.
 
 It is still an early source-based port. Only x86_64 has been tested, no HPKG is
@@ -79,12 +79,18 @@ cd ..
 ```
 
 Run the non-invasive checks and install the user service, input add-on and
-Deskbar application:
+Deskbar icon:
 
 ```sh
 python3 os_haiku/doctor.py
 ./os_haiku/install-local.sh
 ```
+
+The installer adds **BeRD Agent** as a real Deskbar replicant. Deskbar restores
+it automatically on subsequent logins. Its indicator is green when the local
+agent is running and configured, yellow when configuration is missing, and red
+when the agent is stopped or reports an error. Click it for Dashboard,
+Start/Stop, Log and About actions.
 
 Reboot or log out and in so `input_server` and `launch_daemon` discover the new
 components. Then verify both authenticated input devices without generating
@@ -107,6 +113,7 @@ keyboard and clipboard control should work with SSH disconnected.
 | Launch descriptor | `/boot/home/config/settings/launch/dwservice_agent` |
 | Input add-on | `/boot/home/config/non-packaged/add-ons/input_server/devices/dwservice_remote_input` |
 | Supervisor log | `/boot/home/config/cache/DWService/service.log` |
+| Tray status | `/boot/home/config/cache/DWService/agent.status` |
 | Agent log | `core/dwagent.log` |
 
 ## Known limitations
@@ -119,6 +126,9 @@ keyboard and clipboard control should work with SSH disconnected.
   validated.
 - Installation is per-user and currently requires the fixed source path above.
 - Updating is manual because upstream does not publish Haiku native archives.
+- The Python agent runs without its own window or Deskbar application entry.
+  It remains visible in ProcessController/Team Monitor by design; BeRD does not
+  conceal remote-control processes from the operating system or local user.
 
 ## Development
 

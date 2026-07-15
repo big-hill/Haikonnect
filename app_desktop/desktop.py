@@ -427,7 +427,7 @@ class DesktopProcessCapture(threading.Thread):
                         time.sleep(1)
                 except:
                     e = utils.get_exception()
-                    strmsg=utils.exception_to_string(e)                    
+                    strmsg=utils.get_exception_string(e)
                     self._process_last_error=strmsg
                     if "Wayland" in strmsg:
                         self.destroy()                    

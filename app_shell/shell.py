@@ -12,6 +12,7 @@ import sys
 import struct
 import signal
 import time
+import errno
 import utils
 import subprocess
 import io
@@ -42,6 +43,7 @@ except:
 SHELL_TIMEOUT_CONNECTION = 40; #Seconds
 SHELL_TIMEOUT_RECOVERY = 20; #Seconds
 SHELL_VERSION = 1
+HAIKU_DEFAULT_PATH = "/boot/home/config/non-packaged/bin:/boot/home/config/bin:/boot/system/non-packaged/bin:/boot/system/bin:/bin"
 
 class Shell():
     
@@ -526,7 +528,8 @@ class LinuxMac():
                 self._login_request = LoginRequest(self)
             else:
                 self.open_session(None,None)
-        except:
+        except Exception as e:
+            self._manager._shlmain._agent_main.write_except(e,"AppShell:: initialize error:")
             self.terminate()
         
     def check_login(self,u,p):
@@ -686,7 +689,8 @@ class LinuxMac():
                     env["TERM"] = "xterm"
                     env["SHELL"] = upshell
                     env["HOME"] = udir
-                    env["PATH"] = os.environ['PATH']
+                    default_path = HAIKU_DEFAULT_PATH if utils.is_haiku() else os.defpath
+                    env["PATH"] = os.environ.get("PATH", default_path)
                     applng=os.environ.get('LANG')
                     if applng is not None:
                         if not (applng.upper().endswith(".UTF8") or applng.upper().endswith(".UTF-8")):
@@ -707,10 +711,15 @@ class LinuxMac():
                         nargv.append("-l")
                     os.execvpe(upshell, nargv, env)
                     os._exit(0)
-                except:
+                except Exception as e:
+                    try:
+                        msg="DWService shell start error: " + utils.exception_to_string(e) + "\r\n"
+                        os.write(stderr, utils.str_to_bytes(msg, "utf8"))
+                    except:
+                        None
                     os._exit(1)
 
-            fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
+            fl = fcntl.fcntl(pio, fcntl.F_GETFL)
             fcntl.fcntl(pio, fcntl.F_SETFL, fl | os.O_NONBLOCK)
             fcntl.ioctl(pio, termios.TIOCSWINSZ, struct.pack("hhhh", self._rows, self._cols, 0, 0))
             self._ppid = ppid
@@ -722,7 +731,8 @@ class LinuxMac():
             except:
                 None
             self._login_request = None
-        except:
+        except Exception as e:
+            self._manager._shlmain._agent_main.write_except(e,"AppShell:: open session error:")
             self.terminate()
 
     def _processIsAlive(self):
@@ -814,12 +824,21 @@ class LinuxMac():
             #output=reader.read(128)
             #reader.close()
             #output=self._reader.read(self._rows*self._cols)
-            s = self._reader.read()
+            if utils.is_haiku():
+                try:
+                    s = os.read(self._pio, max(4096, self._rows*self._cols*16))
+                except OSError as e:
+                    if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                        return None
+                    raise
+            else:
+                s = self._reader.read()
             if s is not None:
                 return utils.bytes_to_str(s,self._rwenc)
             else:
                 return s
-        except:
+        except Exception as e:
+            self._manager._shlmain._agent_main.write_except(e,"AppShell:: read error:")
             self.terminate()
 
 class Windows():

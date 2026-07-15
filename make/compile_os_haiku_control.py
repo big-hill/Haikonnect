@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Build the native Haiku Deskbar control application.
+'''Build the native Haiku Deskbar replicant and installer application.
 
 This Source Code Form is subject to the terms of the Mozilla
 Public License, v. 2.0. If a copy of the MPL was not distributed
@@ -18,7 +18,7 @@ class Compile:
         utils.info("BEGIN " + self.get_name())
         source = os.path.abspath(os.path.join(
             "..", "os_haiku_control", "src", "dwservicecontrol.cpp"))
-        output = os.path.abspath(os.path.join(utils.PATHNATIVE, "DWService"))
+        output = os.path.abspath(os.path.join(utils.PATHNATIVE, "BeRDAgent"))
         command = (
             'g++ -std=c++17 -O2 -Wall -Wextra -o "{output}" '
             '"{source}" -lbe'

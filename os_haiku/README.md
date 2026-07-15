@@ -64,9 +64,16 @@ Install the input add-on and launch file:
 ./os_haiku/install-local.sh
 ```
 
-The installer also adds a native **DWService** control application to the
-Deskbar's Applications menu. It can start or stop the launch service, refresh
-local status, open the DWService web dashboard, and open the local service log.
+The installer adds a native **BeRD Agent** replicant directly to Deskbar and an
+Applications-menu shortcut that can restore it if needed. Deskbar persists and
+reloads the replicant automatically at login. The indicator is green when the
+agent is configured and running, yellow when it is not configured, and red
+when it is stopped or has failed. Its menu opens the dashboard or log, starts
+or stops the service, and shows project information.
+
+The Python agent is launched with no terminal, window or separate Deskbar app
+entry. It is intentionally still visible in Haiku's ProcessController/Team
+Monitor so the remote-control process is never concealed from the local user.
 
 A reboot/login is required for `input_server` and the user launch daemon to
 discover the new files. After reboot, verify that the agent is online and that
@@ -87,5 +94,16 @@ The supervisor log is written to:
 ```text
 /boot/home/config/cache/DWService/service.log
 ```
+
+The supervisor atomically publishes the current child process state for the
+Deskbar replicant at:
+
+```text
+/boot/home/config/cache/DWService/agent.status
+```
+
+It also publishes its own numeric team ID in the same private directory. The
+`berd-agent-control` helper uses only these service-owned IDs when Start/Stop is
+selected; it never searches for or signals processes by a broad name match.
 
 The agent's own log is written in `core/dwagent.log`.

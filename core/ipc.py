@@ -1741,6 +1741,16 @@ class Process():
     
     def get_pid(self):
         return self._ppid
+
+    def _get_python_executable(self):
+        executable=utils.str_new(sys.executable or u"")
+        if utils.is_haiku():
+            candidates=(executable, u"/boot/system/bin/python3", u"/bin/python3")
+            for candidate in candidates:
+                if candidate and utils.path_isfile(candidate):
+                    return candidate
+            return u"python3"
+        return executable
     
     def _create_process(self, args):
         if utils.is_windows() and not self._forcesubprocess:
@@ -1778,7 +1788,7 @@ class Process():
             self._config=ProcessConfig()
             self._config.create(self, self._fixperm)
             #START CHILD PROCESS
-            self._py_exe_path=utils.str_new(sys.executable) 
+            self._py_exe_path=self._get_python_executable()
             if utils.is_windows():
                 #sys.executable don't work well with unicode path
                 self._py_home_path=u""

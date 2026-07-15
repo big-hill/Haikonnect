@@ -9,7 +9,8 @@ SETTINGS_DIR="/boot/home/config/settings/DWService"
 LOG_DIR="/boot/home/config/cache/DWService"
 
 HOME="/boot/home"
-export HOME
+PATH="/boot/home/config/non-packaged/bin:/boot/home/config/bin:/boot/system/non-packaged/bin:/boot/system/bin:/bin"
+export HOME PATH
 
 mkdir -p "$SETTINGS_DIR" "$LOG_DIR"
 chmod 700 "$SETTINGS_DIR" "$LOG_DIR"

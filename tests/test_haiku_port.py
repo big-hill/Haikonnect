@@ -106,6 +106,7 @@ class HaikuPortTests(unittest.TestCase):
             "os_haiku_control", "src", "dwservicecontrol.cpp")
 
         self.assertIn("instantiate_deskbar_item", source)
+        self.assertIn("BeRDAgentView::Instantiate(BMessage* archive)", source)
         self.assertIn('archive->AddString("add_on", kSignature)', source)
         self.assertIn('archive->AddString("class", "BeRDAgentView")', source)
         self.assertIn("BMessageRunner", source)
@@ -132,13 +133,24 @@ class HaikuPortTests(unittest.TestCase):
         self.assertIn('write_status "running $child_pid"', supervisor)
         self.assertIn('write_status "error $status"', supervisor)
         self.assertIn("</dev/null", supervisor)
-        self.assertIn("python3 agent.py -filelog -noctrlfile", supervisor)
+        self.assertIn(
+            'PYTHON="/boot/home/config/non-packaged/bin/berd-python3"',
+            supervisor)
+        self.assertIn(
+            '"$PYTHON" agent.py -filelog -noctrlfile', supervisor)
 
     def test_installer_uses_berd_identity_and_scoped_replicant_removal(self):
         installer = self._read("os_haiku", "install-local.sh")
         compiler = self._read("make", "compile_os_haiku_control.py")
 
         self.assertIn('CONTROL_APP="$APP_DIR/BeRDAgent"', installer)
+        self.assertIn('RUNTIME_PYTHON="$BIN_DIR/berd-python3"', installer)
+        self.assertIn(
+            "B_MULTIPLE_LAUNCH | B_BACKGROUND_APP is 0x5", installer)
+        self.assertIn("printf '\\005\\000\\000\\000'", installer)
+        self.assertIn(
+            'addattr -f "$APP_FLAGS_FILE" -c APPF BEOS:APP_FLAGS',
+            installer)
         self.assertIn('"$CONTROL_APP" --remove', installer)
         self.assertIn('"$CONTROL_APP" --install', installer)
         self.assertIn('"$DESKBAR_DIR/BeRD Agent"', installer)

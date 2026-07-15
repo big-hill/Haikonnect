@@ -129,6 +129,8 @@ keyboard and clipboard control should work with SSH disconnected.
 - The Python agent runs without its own window or Deskbar application entry.
   It remains visible in ProcessController/Team Monitor by design; BeRD does not
   conceal remote-control processes from the operating system or local user.
+  The installer achieves this with a private, background-flagged copy of the
+  installed Python launcher; it does not modify or bundle the system runtime.
 
 ## Development
 

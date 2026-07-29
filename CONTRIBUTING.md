@@ -1,4 +1,4 @@
-# Contributing to BeRD
+# Contributing to Haikonnect
 
 Thank you for helping improve the Haiku port.
 

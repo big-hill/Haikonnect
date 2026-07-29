@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in the BeRD Haiku port
+description: Report a reproducible problem in the Haikonnect Haiku port
 title: "[Bug]: "
 labels: [bug]
 body:

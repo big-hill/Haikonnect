@@ -3,7 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- * Native Deskbar replicant for BeRD Agent on Haiku.
+ * Native Deskbar replicant for Haikonnect on Haiku.
  *
  * The Python remote-control agent remains a normal, inspectable user service.
  * This add-on supplies its visible local identity, status and lifecycle menu.
@@ -35,9 +35,10 @@
 #include <unistd.h>
 
 
-static const char* kSignature = "application/x-vnd.big-hill-BeRDAgent";
+static const char* kSignature = "application/x-vnd.big-hill-Haikonnect";
 static const char* kDeskbarSignature = "application/x-vnd.Be-TSKB";
-static const char* kDeskbarItemName = "BeRDAgent";
+static const char* kDeskbarItemName = "Haikonnect";
+static const char* kLegacyDeskbarItemName = "BeRDAgent";
 static const char* kConfig =
 	"/boot/home/config/non-packaged/apps/DWService/core/config.json";
 static const char* kStatusFile =
@@ -47,23 +48,23 @@ static const char* kLog =
 
 static const char* kStartCommand =
 	"/boot/home/config/non-packaged/apps/DWService/os_haiku/"
-	"berd-agent-control start >/dev/null 2>&1";
+	"haikonnect-agent-control start >/dev/null 2>&1";
 static const char* kStopCommand =
 	"/boot/home/config/non-packaged/apps/DWService/os_haiku/"
-	"berd-agent-control stop >/dev/null 2>&1";
+	"haikonnect-agent-control stop >/dev/null 2>&1";
 static const char* kDashboardCommand =
 	"open https://www.dwservice.net/ >/dev/null 2>&1";
 static const char* kLogCommand =
 	"open /boot/home/config/cache/DWService/service.log >/dev/null 2>&1";
 
 enum {
-	kMsgRefresh = 'bdrf',
-	kMsgStart = 'bdst',
-	kMsgStop = 'bdsp',
-	kMsgDashboard = 'bddb',
-	kMsgLog = 'bdlg',
-	kMsgAbout = 'bdab',
-	kMsgActionDone = 'bdad'
+	kMsgRefresh = 'hkrf',
+	kMsgStart = 'hkst',
+	kMsgStop = 'hksp',
+	kMsgDashboard = 'hkdb',
+	kMsgLog = 'hklg',
+	kMsgAbout = 'hkab',
+	kMsgActionDone = 'hkad'
 };
 
 enum AgentState {
@@ -158,9 +159,9 @@ run_action(void* cookie)
 }
 
 
-class BeRDAgentView : public BView {
+class HaikonnectView : public BView {
 public:
-	BeRDAgentView(BRect frame, int32 resizingMode, bool inDeskbar)
+	HaikonnectView(BRect frame, int32 resizingMode, bool inDeskbar)
 		:
 		BView(frame, kDeskbarItemName, resizingMode,
 			B_WILL_DRAW | B_TRANSPARENT_BACKGROUND | B_FRAME_EVENTS),
@@ -173,7 +174,7 @@ public:
 		_RefreshStatus();
 	}
 
-	BeRDAgentView(BMessage* archive)
+	HaikonnectView(BMessage* archive)
 		:
 		BView(archive),
 		fInDeskbar(false),
@@ -190,7 +191,7 @@ public:
 		_RefreshStatus();
 	}
 
-	virtual ~BeRDAgentView()
+	virtual ~HaikonnectView()
 	{
 		delete fRunner;
 		if (fActionThread >= B_OK) {
@@ -199,7 +200,7 @@ public:
 		}
 	}
 
-	static BeRDAgentView* Instantiate(BMessage* archive);
+	static HaikonnectView* Instantiate(BMessage* archive);
 
 	virtual status_t Archive(BMessage* archive, bool deep = true) const
 	{
@@ -207,7 +208,7 @@ public:
 		if (status == B_OK)
 			status = archive->AddString("add_on", kSignature);
 		if (status == B_OK)
-			status = archive->AddString("class", "BeRDAgentView");
+			status = archive->AddString("class", "HaikonnectView");
 		return status;
 	}
 
@@ -280,7 +281,7 @@ public:
 		SetFont(&font);
 		font_height metrics;
 		font.GetHeight(&metrics);
-		const char* letter = "B";
+		const char* letter = "H";
 		float x = circle.left + (circle.Width() - font.StringWidth(letter)) / 2;
 		float y = circle.top
 			+ (circle.Height() - (metrics.ascent + metrics.descent)) / 2
@@ -297,7 +298,7 @@ public:
 		menu->SetAsyncAutoDestruct(true);
 		menu->SetFont(be_plain_font);
 
-		BString status("BeRD Agent: ");
+		BString status("Haikonnect: ");
 		status << fStatusText;
 		BMenuItem* statusItem = new BMenuItem(status.String(), NULL);
 		statusItem->SetEnabled(false);
@@ -314,7 +315,7 @@ public:
 		}
 		menu->AddItem(new BMenuItem("Log", new BMessage(kMsgLog)));
 		menu->AddSeparatorItem();
-		menu->AddItem(new BMenuItem("About BeRD",
+		menu->AddItem(new BMenuItem("About Haikonnect",
 			new BMessage(kMsgAbout)));
 		menu->SetTargetForItems(this);
 
@@ -330,17 +331,17 @@ public:
 				break;
 			case kMsgStart:
 				if (access(kConfig, R_OK) != 0) {
-					_ShowAlert("BeRD Agent is not configured yet. Create a "
+					_ShowAlert("Haikonnect is not configured yet. Create a "
 						"one-time installation code in the dashboard, then run "
 						"make/create_config.py locally.");
 				} else {
 					_StartAction(kStartCommand,
-						"Could not start the BeRD Agent service.");
+						"Could not start the Haikonnect service.");
 				}
 				break;
 			case kMsgStop:
 				_StartAction(kStopCommand,
-					"Could not stop the BeRD Agent service.");
+					"Could not stop the Haikonnect service.");
 				break;
 			case kMsgDashboard:
 				_StartAction(kDashboardCommand,
@@ -348,10 +349,10 @@ public:
 				break;
 			case kMsgLog:
 				if (access(kLog, R_OK) != 0)
-					_ShowAlert("No BeRD Agent service log exists yet.");
+					_ShowAlert("No Haikonnect service log exists yet.");
 				else
 					_StartAction(kLogCommand,
-						"Could not open the BeRD Agent service log.");
+						"Could not open the Haikonnect service log.");
 				break;
 			case kMsgAbout:
 				_ShowAbout();
@@ -388,7 +389,7 @@ private:
 		fAgentRunning = running;
 		fStatusText = text;
 
-		BString tooltip("BeRD Agent - ");
+		BString tooltip("Haikonnect - ");
 		tooltip << fStatusText;
 		SetToolTip(tooltip.String());
 		if (changed && Window() != NULL)
@@ -398,7 +399,7 @@ private:
 	void _StartAction(const char* command, const char* failureMessage)
 	{
 		if (fActionThread >= B_OK) {
-			_ShowAlert("Another BeRD Agent action is still in progress.");
+			_ShowAlert("Another Haikonnect action is still in progress.");
 			return;
 		}
 
@@ -411,7 +412,7 @@ private:
 		request->failureMessage = failureMessage;
 		request->target = BMessenger(this);
 
-		fActionThread = spawn_thread(run_action, "BeRD Agent action",
+		fActionThread = spawn_thread(run_action, "Haikonnect action",
 			B_LOW_PRIORITY, request);
 		if (fActionThread < B_OK) {
 			delete request;
@@ -442,7 +443,7 @@ private:
 
 	void _ShowAlert(const char* text)
 	{
-		BAlert* alert = new BAlert("BeRD Agent", text, "OK", NULL, NULL,
+		BAlert* alert = new BAlert("Haikonnect", text, "OK", NULL, NULL,
 			B_WIDTH_AS_USUAL, B_STOP_ALERT);
 		alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
 		alert->Go(NULL);
@@ -450,12 +451,12 @@ private:
 
 	void _ShowAbout()
 	{
-		BAlert* alert = new BAlert("About BeRD Agent",
-			"BeRD Agent\nBeRD for Haiku\n\n"
+		BAlert* alert = new BAlert("About Haikonnect",
+			"Haikonnect\nRemote access for Haiku\n\n"
 			"An experimental, unofficial Haiku port of the DWService "
-			"Agent. BeRD is not affiliated with or endorsed by DWSNET "
-			"s.r.l.\n\nLicensed under MPL-2.0; bundled components may "
-			"retain their own licenses.",
+			"Agent. Haikonnect is not affiliated with or endorsed by "
+			"DWSNET s.r.l. or Haiku, Inc.\n\nLicensed under MPL-2.0; "
+			"bundled components may retain their own licenses.",
 			"OK");
 		alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
 		alert->Go(NULL);
@@ -470,12 +471,12 @@ private:
 };
 
 
-BeRDAgentView*
-BeRDAgentView::Instantiate(BMessage* archive)
+HaikonnectView*
+HaikonnectView::Instantiate(BMessage* archive)
 {
-	if (!validate_instantiation(archive, "BeRDAgentView"))
+	if (!validate_instantiation(archive, "HaikonnectView"))
 		return NULL;
-	return new BeRDAgentView(archive);
+	return new HaikonnectView(archive);
 }
 
 
@@ -483,17 +484,18 @@ extern "C" _EXPORT BView*
 instantiate_deskbar_item(float maxWidth, float maxHeight)
 {
 	(void)maxWidth;
-	return new BeRDAgentView(BRect(0, 0, maxHeight - 1, maxHeight - 1),
+	return new HaikonnectView(BRect(0, 0, maxHeight - 1, maxHeight - 1),
 		B_FOLLOW_LEFT | B_FOLLOW_TOP, true);
 }
 
 
-class BeRDAgentApplication : public BApplication {
+class HaikonnectApplication : public BApplication {
 public:
-	BeRDAgentApplication()
+	HaikonnectApplication()
 		:
 		BApplication(kSignature),
 		fRemove(false),
+		fRemoveLegacy(false),
 		fShowHelp(false),
 		fResult(B_OK)
 	{
@@ -502,11 +504,16 @@ public:
 	virtual void ArgvReceived(int32 argc, char** argv)
 	{
 		for (int32 index = 1; index < argc; index++) {
-			if (strcmp(argv[index], "--remove") == 0)
+			if (strcmp(argv[index], "--remove") == 0) {
 				fRemove = true;
-			else if (strcmp(argv[index], "--install") == 0)
+				fRemoveLegacy = false;
+			} else if (strcmp(argv[index], "--remove-legacy") == 0) {
 				fRemove = false;
-			else if (strcmp(argv[index], "--help") == 0
+				fRemoveLegacy = true;
+			} else if (strcmp(argv[index], "--install") == 0) {
+				fRemove = false;
+				fRemoveLegacy = false;
+			} else if (strcmp(argv[index], "--help") == 0
 				|| strcmp(argv[index], "-h") == 0) {
 				fShowHelp = true;
 			} else {
@@ -520,18 +527,26 @@ public:
 	virtual void ReadyToRun()
 	{
 		if (fShowHelp) {
-			puts("BeRDAgent options:\n"
-				"  --install  add the BeRD Agent replicant to Deskbar\n"
-				"  --remove   remove only the BeRD Agent replicant\n"
-				"  --help     show this help");
+			puts("Haikonnect options:\n"
+				"  --install        add Haikonnect to Deskbar\n"
+				"  --remove         remove only the Haikonnect replicant\n"
+				"  --remove-legacy  remove the former BeRD replicant\n"
+				"  --help           show this help");
 			Quit();
 			return;
 		}
 
 		BDeskbar deskbar;
 		if (!deskbar.IsRunning()) {
-			fprintf(stderr, "BeRD Agent: Deskbar is not running.\n");
+			fprintf(stderr, "Haikonnect: Deskbar is not running.\n");
 			fResult = B_ERROR;
+			Quit();
+			return;
+		}
+
+		if (fRemoveLegacy) {
+			if (deskbar.HasItem(kLegacyDeskbarItemName))
+				fResult = deskbar.RemoveItem(kLegacyDeskbarItemName);
 			Quit();
 			return;
 		}
@@ -559,6 +574,7 @@ public:
 
 private:
 	bool fRemove;
+	bool fRemoveLegacy;
 	bool fShowHelp;
 	status_t fResult;
 };
@@ -567,7 +583,7 @@ private:
 int
 main()
 {
-	BeRDAgentApplication application;
+	HaikonnectApplication application;
 	application.Run();
 	return application.Result() == B_OK ? 0 : 1;
 }

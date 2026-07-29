@@ -1,10 +1,11 @@
 # Licensing
 
-BeRD is a multi-license repository inherited from the DWService Agent.
+Haikonnect is a multi-license repository inherited from the DWService Agent.
 
 The original agent, applications, build tooling and the new Haiku port code are
 distributed under the Mozilla Public License 2.0 unless a file or component
-states otherwise. The full MPL-2.0 text is included in component directories,
+states otherwise. The repository-level [LICENSE](LICENSE) contains the full
+MPL-2.0 text for Haikonnect-owned files. Component copies are retained,
 including `core/LICENSE`, `make/LICENSE`, `lib_core/LICENSE`,
 `lib_screencapture/LICENSE` and `app_filesystem/LICENSE`.
 

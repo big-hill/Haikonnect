@@ -1,4 +1,4 @@
-title = "BeRD secret scanning"
+title = "Haikonnect secret scanning"
 
 [extend]
 useDefault = true

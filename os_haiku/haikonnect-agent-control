@@ -3,7 +3,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file, You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Lifecycle helper for the BeRD Agent Deskbar replicant. Haiku's launch_roster
+# Lifecycle helper for the Haikonnect Deskbar replicant. Haiku's launch_roster
 # records the requested state for a shell service, but does not itself signal
 # that shell. The supervisor and child IDs below are published by the service
 # in a user-private directory; no process-name matching is used.
@@ -49,7 +49,7 @@ write_stopped()
 start_agent()
 {
 	if ! launch_roster start "$SERVICE"; then
-		echo "BeRD Agent: launch_roster could not start the service." >&2
+		echo "Haikonnect: launch_roster could not start the service." >&2
 		return 1
 	fi
 
@@ -65,14 +65,14 @@ start_agent()
 		sleep 1
 	done
 
-	echo "BeRD Agent: service did not reach running state." >&2
+	echo "Haikonnect: service did not reach running state." >&2
 	return 1
 }
 
 stop_agent()
 {
 	if ! launch_roster stop "$SERVICE"; then
-		echo "BeRD Agent: launch_roster could not stop the service." >&2
+		echo "Haikonnect: launch_roster could not stop the service." >&2
 		return 1
 	fi
 
@@ -100,7 +100,7 @@ stop_agent()
 		sleep 1
 	done
 
-	echo "BeRD Agent: service did not stop within 15 seconds." >&2
+	echo "Haikonnect: service did not stop within 15 seconds." >&2
 	return 1
 }
 

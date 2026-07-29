@@ -9,7 +9,7 @@ SETTINGS_DIR="/boot/home/config/settings/DWService"
 LOG_DIR="/boot/home/config/cache/DWService"
 STATUS_FILE="$LOG_DIR/agent.status"
 SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"
-PYTHON="/boot/home/config/non-packaged/bin/berd-python3"
+PYTHON="/boot/home/config/non-packaged/bin/haikonnect-python3"
 
 HOME="/boot/home"
 PATH="/boot/home/config/non-packaged/bin:/boot/home/config/bin:/boot/system/non-packaged/bin:/boot/system/bin:/bin"

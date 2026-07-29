@@ -1,9 +1,9 @@
-# BeRD runtime for Haiku
+# Haikonnect runtime for Haiku
 
-This directory contains the local-service part of BeRD's DWService Agent port. The agent
-runs in the logged-in Haiku user's session so that it can use `app_server` for
-screen capture, clipboard access, and input delivery. It does not require an
-SSH session after installation.
+This directory contains the local-service part of Haikonnect's DWService Agent
+port. The agent runs in the logged-in Haiku user's session so that it can use
+`app_server` for screen capture, clipboard access, and input delivery. It does
+not require an SSH session after installation.
 
 ## Runtime layout
 
@@ -64,7 +64,7 @@ Install the input add-on and launch file:
 ./os_haiku/install-local.sh
 ```
 
-The installer adds a native **BeRD Agent** replicant directly to Deskbar and an
+The installer adds a native **Haikonnect** replicant directly to Deskbar and an
 Applications-menu shortcut that can restore it if needed. Deskbar persists and
 reloads the replicant automatically at login. The indicator is green when the
 agent is configured and running, yellow when it is not configured, and red
@@ -77,10 +77,13 @@ Monitor so the remote-control process is never concealed from the local user.
 The installer copies Haiku's small Python launcher to the per-user bin folder
 and marks only that copy as `B_BACKGROUND_APP`; system Python is not modified.
 
-A reboot/login is required for `input_server` and the user launch daemon to
-discover the new files. After reboot, verify that the agent is online and that
-screen, pointer, keyboard, and clipboard control work from the DWService web
-dashboard with SSH disconnected.
+The installer stages the input add-on outside Haiku's monitored add-on
+directory and then moves it into place under its final name. This makes a
+running `input_server` load or replace it cleanly. A reboot/login may still be
+required for the user launch daemon to discover a newly installed service.
+Afterward, verify that the agent is online and that screen, pointer, keyboard,
+and clipboard control work from the DWService web dashboard with SSH
+disconnected.
 
 The post-reboot native gate also verifies that both registered input devices
 accept the shared authentication token without generating any input:
@@ -105,7 +108,8 @@ Deskbar replicant at:
 ```
 
 It also publishes its own numeric team ID in the same private directory. The
-`berd-agent-control` helper uses only these service-owned IDs when Start/Stop is
-selected; it never searches for or signals processes by a broad name match.
+`haikonnect-agent-control` helper uses only these service-owned IDs when
+Start/Stop is selected; it never searches for or signals processes by a broad
+name match.
 
 The agent's own log is written in `core/dwagent.log`.

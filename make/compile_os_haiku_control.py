@@ -18,7 +18,7 @@ class Compile:
         utils.info("BEGIN " + self.get_name())
         source = os.path.abspath(os.path.join(
             "..", "os_haiku_control", "src", "dwservicecontrol.cpp"))
-        output = os.path.abspath(os.path.join(utils.PATHNATIVE, "BeRDAgent"))
+        output = os.path.abspath(os.path.join(utils.PATHNATIVE, "Haikonnect"))
         command = (
             'g++ -std=c++17 -O2 -Wall -Wextra -o "{output}" '
             '"{source}" -lbe'

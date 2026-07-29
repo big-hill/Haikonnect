@@ -60,9 +60,9 @@ class HaikuPortTests(unittest.TestCase):
             try:
                 self.assertEqual("F", mapping.ftype)
                 mapping.seek(0)
-                mapping.write(b"BeRD")
+                mapping.write(b"Haikonnect")
                 mapping.seek(0)
-                self.assertEqual(b"BeRD", mapping.read(4))
+                self.assertEqual(b"Haikonnect", mapping.read(10))
             finally:
                 mapping._destroy()
 
@@ -91,8 +91,9 @@ class HaikuPortTests(unittest.TestCase):
         shell._pio = 7
         shell._reader = mock.Mock()
         with mock.patch.object(utils, "is_haiku", return_value=True), \
-                mock.patch.object(os, "read", return_value=b"BeRD") as read:
-            self.assertEqual("BeRD", shell.read_update())
+                mock.patch.object(
+                    os, "read", return_value=b"Haikonnect") as read:
+            self.assertEqual("Haikonnect", shell.read_update())
 
         read.assert_called_once_with(7, 80*24*16)
         shell._reader.read.assert_not_called()
@@ -106,12 +107,13 @@ class HaikuPortTests(unittest.TestCase):
             "os_haiku_control", "src", "dwservicecontrol.cpp")
 
         self.assertIn("instantiate_deskbar_item", source)
-        self.assertIn("BeRDAgentView::Instantiate(BMessage* archive)", source)
+        self.assertIn("HaikonnectView::Instantiate(BMessage* archive)", source)
         self.assertIn('archive->AddString("add_on", kSignature)', source)
-        self.assertIn('archive->AddString("class", "BeRDAgentView")', source)
+        self.assertIn('archive->AddString("class", "HaikonnectView")', source)
         self.assertIn("BMessageRunner", source)
         self.assertIn("deskbar.AddItem(&info.ref)", source)
         self.assertIn("deskbar.RemoveItem(kDeskbarItemName)", source)
+        self.assertIn('const char* letter = "H"', source)
         self.assertNotIn('popen("ps"', source)
 
     def test_deskbar_menu_exposes_required_actions(self):
@@ -119,10 +121,11 @@ class HaikuPortTests(unittest.TestCase):
             "os_haiku_control", "src", "dwservicecontrol.cpp")
 
         for label in ("Dashboard", "Start Agent", "Stop Agent", "Log",
-                      "About BeRD"):
+                      "About Haikonnect"):
             self.assertIn('"{}"'.format(label), source)
         for status in ("Running and configured", "Not configured", "Error"):
             self.assertIn('"{}"'.format(status), source)
+        self.assertIn("Remote access for Haiku", source)
 
     def test_supervisor_publishes_pid_status_without_a_window(self):
         supervisor = self._read("os_haiku", "dwagent-haiku-service")
@@ -134,17 +137,18 @@ class HaikuPortTests(unittest.TestCase):
         self.assertIn('write_status "error $status"', supervisor)
         self.assertIn("</dev/null", supervisor)
         self.assertIn(
-            'PYTHON="/boot/home/config/non-packaged/bin/berd-python3"',
+            'PYTHON="/boot/home/config/non-packaged/bin/haikonnect-python3"',
             supervisor)
         self.assertIn(
             '"$PYTHON" agent.py -filelog -noctrlfile', supervisor)
 
-    def test_installer_uses_berd_identity_and_scoped_replicant_removal(self):
+    def test_installer_uses_haikonnect_identity_and_scoped_migration(self):
         installer = self._read("os_haiku", "install-local.sh")
         compiler = self._read("make", "compile_os_haiku_control.py")
 
-        self.assertIn('CONTROL_APP="$APP_DIR/BeRDAgent"', installer)
-        self.assertIn('RUNTIME_PYTHON="$BIN_DIR/berd-python3"', installer)
+        self.assertIn('CONTROL_APP="$APP_DIR/Haikonnect"', installer)
+        self.assertIn(
+            'RUNTIME_PYTHON="$BIN_DIR/haikonnect-python3"', installer)
         self.assertIn(
             "B_MULTIPLE_LAUNCH | B_BACKGROUND_APP is 0x5", installer)
         self.assertIn("printf '\\005\\000\\000\\000'", installer)
@@ -152,18 +156,50 @@ class HaikuPortTests(unittest.TestCase):
             'addattr -f "$APP_FLAGS_FILE" -c APPF BEOS:APP_FLAGS',
             installer)
         self.assertIn('"$CONTROL_APP" --remove', installer)
+        self.assertIn('"$CONTROL_APP" --remove-legacy', installer)
         self.assertIn('"$CONTROL_APP" --install', installer)
-        self.assertIn('"$DESKBAR_DIR/BeRD Agent"', installer)
-        self.assertIn('"BeRDAgent"', compiler)
+        self.assertIn('"$DESKBAR_DIR/Haikonnect"', installer)
+        self.assertIn('LEGACY_CONTROL_APP="$APP_DIR/BeRDAgent"', installer)
+        self.assertIn(
+            'LEGACY_DESKBAR_LINK="$DESKBAR_DIR/BeRD Agent"', installer)
+        self.assertIn(
+            'INPUT_TEMP="$LOG_DIR/.dwservice_remote_input.new.$$"',
+            installer)
+        self.assertIn('mv "$INPUT_ADDON" "$INPUT_PREVIOUS"', installer)
+        self.assertIn('mv "$INPUT_TEMP" "$INPUT_ADDON"', installer)
+        self.assertNotIn(
+            'cp make/native/dwservice_remote_input "$ADDON_DIR/',
+            installer)
+        self.assertIn('"Haikonnect"', compiler)
 
     def test_control_helper_targets_only_published_process_ids(self):
-        helper = self._read("os_haiku", "berd-agent-control")
+        helper = self._read("os_haiku", "haikonnect-agent-control")
 
         self.assertIn('launch_roster stop "$SERVICE"', helper)
         self.assertIn('kill -TERM "$supervisor_pid"', helper)
         self.assertIn('kill -TERM "$agent_pid"', helper)
         self.assertIn('SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"', helper)
         self.assertNotIn("ps |", helper)
+
+    def test_input_device_uses_native_modifier_and_click_sequences(self):
+        source = self._read(
+            "os_haiku_input", "src", "dwserviceinputdevice.cpp")
+
+        for token in (
+                "B_MODIFIERS_CHANGED",
+                '"be:old_modifiers"',
+                "map->control_map",
+                "B_LEFT_COMMAND_KEY",
+                "_WaitUntil(fButtonDownAt[index], kClickHold)",
+                "snooze(kDoubleClickGap)",
+                "_NextPrimaryClickCount()",
+                "Release old buttons before pressing new ones",
+                "what == B_MOUSE_DOWN && clicks > 0",
+                'AddData("bytes", B_STRING_TYPE',
+                "snooze(kKeyHold)"):
+            self.assertIn(token, source)
+        self.assertNotIn(
+            'event->AddInt32("be:key_repeat", 1)', source)
 
 
 if __name__ == "__main__":

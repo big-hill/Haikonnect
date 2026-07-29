@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Gitleaks scans the complete event commit range.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
@@ -20,8 +23,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Compile Python sources
         run: >-
-          python -m compileall -q core app_desktop app_filesystem make
-          os_haiku tests
+          python -m compileall -q core app_desktop app_filesystem app_shell
+          make os_haiku tests
       - name: Validate JSON
         run: |
           python - <<'PY'
@@ -35,6 +38,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
+          shellcheck os_haiku/haikonnect-agent-control
           shellcheck os_haiku/dwagent-haiku-service os_haiku/install-local.sh
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v2

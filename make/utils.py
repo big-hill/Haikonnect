@@ -178,8 +178,10 @@ def system_exec(cmd,wkdir):
     if len(o)>0:
         print("Output:\n" + bytes_to_str(o,"utf8"))
     if len(e)>0:
-        print("Error:\n" + bytes_to_str(e,"utf8"))
-        #return False
+        if p.returncode == 0:
+            print("Warnings/output:\n" + bytes_to_str(e,"utf8"))
+        else:
+            print("Error:\n" + bytes_to_str(e,"utf8"))
     return p.returncode == 0
 
 def remove_from_native(pathnative, mainconf):
@@ -421,5 +423,4 @@ def path_exists(pth):
 def file_open(filename, mode='rb', encoding=None, errors='strict'):
     return codecs.open(filename, mode, encoding, errors)
 #USED BY DETECTINFO
-
 

@@ -14,6 +14,8 @@
 *.DS_Store
 *.token
 core/config.json
+/Haikonnect
+/core/sharedmem/
 github/pat.md
 make/native/*
 make/tmp/*

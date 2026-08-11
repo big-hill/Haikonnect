@@ -5,6 +5,7 @@
 set -e
 
 APP_DIR="/boot/home/config/non-packaged/apps/DWService"
+CONFIG_FILE="$APP_DIR/core/config.json"
 ADDON_DIR="/boot/home/config/non-packaged/add-ons/input_server/devices"
 BIN_DIR="/boot/home/config/non-packaged/bin"
 LAUNCH_DIR="/boot/home/config/settings/launch"
@@ -24,6 +25,8 @@ LEGACY_RUNTIME_PYTHON="$BIN_DIR/berd-python3"
 LEGACY_DESKBAR_LINK="$DESKBAR_DIR/BeRD Agent"
 SERVICE="x-vnd.DWService-Agent"
 SERVICE_WAS_RUNNING=false
+
+umask 077
 
 cleanup()
 {
@@ -54,6 +57,18 @@ mkdir -p "$ADDON_DIR" "$BIN_DIR" "$LAUNCH_DIR" "$SETTINGS_DIR" \
 	"$DESKBAR_DIR" "$LOG_DIR"
 chmod 700 "$SETTINGS_DIR" "$LOG_DIR"
 chmod 755 os_haiku/haikonnect-agent-control
+
+if [ -L "$CONFIG_FILE" ]; then
+	echo "Refusing symbolic-link agent configuration: $CONFIG_FILE"
+	exit 1
+fi
+if [ -e "$CONFIG_FILE" ] && [ ! -f "$CONFIG_FILE" ]; then
+	echo "Refusing non-regular agent configuration: $CONFIG_FILE"
+	exit 1
+fi
+if [ -f "$CONFIG_FILE" ]; then
+	chmod 600 "$CONFIG_FILE"
+fi
 
 # Stop an active agent before replacing its private Python launcher. Preserve
 # the user's previous running/stopped choice across an in-place upgrade.
@@ -128,8 +143,8 @@ ln -sf "$CONTROL_APP" "$DESKBAR_DIR/Haikonnect"
 
 if [ ! -s "$SETTINGS_DIR/input.token" ]; then
 	python3 -c 'import secrets; print(secrets.token_hex(32))' > "$SETTINGS_DIR/input.token"
-	chmod 600 "$SETTINGS_DIR/input.token"
 fi
+chmod 600 "$SETTINGS_DIR/input.token"
 
 if ! "$CONTROL_APP" --install; then
 	echo "Could not add Haikonnect to Deskbar. Log in graphically and run this installer again."

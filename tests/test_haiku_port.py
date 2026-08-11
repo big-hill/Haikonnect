@@ -5,9 +5,16 @@ Public License, v. 2.0. If a copy of the MPL was not distributed
 with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 """
 
+import contextlib
+import importlib.util
+import io
+import json
 import os
+import stat
 import sys
 import tempfile
+import time
+import types
 import unittest
 from unittest import mock
 
@@ -21,6 +28,7 @@ import detectinfo
 import ipc
 import utils
 import applications
+import config_security
 from app_filesystem.filesystem import FileSystem, Linux
 from app_shell.shell import HAIKU_DEFAULT_PATH, LinuxMac
 
@@ -31,6 +39,149 @@ class HaikuPortTests(unittest.TestCase):
     def _read(*parts):
         with open(os.path.join(ROOT, *parts), encoding="utf-8") as source:
             return source.read()
+
+    @staticmethod
+    def _load_module(name, *parts):
+        path = os.path.join(ROOT, *parts)
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_private_config_write_is_atomic_and_mode_0600(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            previous_umask = os.umask(0o022)
+            try:
+                config_security.atomic_write_private(path, '{"key": "test"}')
+            finally:
+                os.umask(previous_umask)
+
+            self.assertEqual(0o600, stat.S_IMODE(os.lstat(path).st_mode))
+            self.assertTrue(config_security.is_private_file(path))
+            with open(path, encoding="utf-8") as source:
+                self.assertEqual('{"key": "test"}', source.read())
+            self.assertEqual(["config.json"], os.listdir(directory))
+
+            os.chmod(path, 0o644)
+            self.assertFalse(config_security.is_private_file(path))
+            config_security.enforce_private_file(path)
+            self.assertTrue(config_security.is_private_file(path))
+
+    def test_configuration_request_has_total_timeout(self):
+        creator = self._load_module(
+            "haikonnect_create_config", "make", "create_config.py")
+
+        self.assertEqual(
+            "ready",
+            creator._network_call_with_progress(lambda: "ready", (), 1))
+        with contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(RuntimeError, "timed out"):
+                creator._network_call_with_progress(
+                    lambda: time.sleep(0.1), (), 0.01)
+
+    def test_configuration_backup_and_restore_stay_private(self):
+        creator = self._load_module(
+            "haikonnect_create_config_backup", "make", "create_config.py")
+        with tempfile.TemporaryDirectory() as directory:
+            config = os.path.join(directory, "config.json")
+            backup = os.path.join(directory, "config.backup.json")
+            config_security.atomic_write_private(
+                config, '{"key": "old-key", "password": "old-password"}')
+            os.chmod(config, 0o644)
+
+            with mock.patch.object(creator, "CONFIG_PATH", config):
+                creator._backup_existing_config(backup)
+                config_security.atomic_write_private(
+                    config, '{"key": "new-key", "password": "new-password"}')
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(0, creator.main(["--restore", backup]))
+
+            self.assertTrue(config_security.is_private_file(config))
+            self.assertTrue(config_security.is_private_file(backup))
+            with open(config, encoding="utf-8") as source:
+                self.assertIn("old-key", source.read())
+
+    def test_create_config_main_writes_mode_0600_under_umask_022(self):
+        creator = self._load_module(
+            "haikonnect_create_config_main", "make", "create_config.py")
+
+        class FakeProxy:
+            def set_type(self, value):
+                self.proxy_type = value
+
+            def set_host(self, value):
+                self.host = value
+
+            def set_port(self, value):
+                self.port = value
+
+            def set_user(self, value):
+                self.user = value
+
+            def set_password(self, value):
+                self.password = value
+
+        communication = types.SimpleNamespace(
+            set_cacerts_path=mock.Mock(),
+            get_url_prop=lambda url, proxy: {
+                "key": "agent-key", "password": "agent-password"},
+            ProxyInfo=FakeProxy,
+        )
+        agent = types.SimpleNamespace(
+            obfuscate_password=lambda password: "obfuscated")
+
+        with tempfile.TemporaryDirectory() as directory:
+            config = os.path.join(directory, "config.json")
+            modules = {"communication": communication, "agent": agent}
+            previous_umask = os.umask(0o022)
+            try:
+                with mock.patch.object(creator, "CONFIG_PATH", config), \
+                        mock.patch.object(
+                            creator.importlib, "import_module",
+                            side_effect=lambda name: modules[name]), \
+                        mock.patch("builtins.input", return_value="one-time-code"), \
+                        mock.patch.object(creator.sys, "platform", "haiku1"), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(0, creator.main(["--timeout", "1"]))
+            finally:
+                os.umask(previous_umask)
+
+            self.assertTrue(config_security.is_private_file(config))
+            with open(config, encoding="utf-8") as source:
+                parsed = json.load(source)
+            self.assertEqual("agent-key", parsed["key"])
+            self.assertFalse(parsed["updates_auto"])
+
+    def test_existing_config_is_hardened_before_reconfigure_refusal(self):
+        creator = self._load_module(
+            "haikonnect_create_config_existing", "make", "create_config.py")
+        with tempfile.TemporaryDirectory() as directory:
+            config = os.path.join(directory, "config.json")
+            with open(config, "w", encoding="utf-8") as output:
+                output.write('{"key": "existing", "password": "private"}')
+            os.chmod(config, 0o644)
+
+            with mock.patch.object(creator, "CONFIG_PATH", config), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(1, creator.main([]))
+
+            self.assertTrue(config_security.is_private_file(config))
+
+    def test_successful_build_stderr_is_not_labeled_as_error(self):
+        make_utils = self._load_module(
+            "haikonnect_make_utils", "make", "utils.py")
+        process = mock.Mock(returncode=0)
+        process.communicate.return_value = (b"", b"compiler warning")
+        output = io.StringIO()
+
+        with mock.patch.object(
+                make_utils.subprocess, "Popen", return_value=process), \
+                contextlib.redirect_stdout(output):
+            self.assertTrue(make_utils.system_exec("compiler", "."))
+
+        self.assertIn("Warnings/output:", output.getvalue())
+        self.assertNotIn("Error:\n", output.getvalue())
 
     def test_native_suffix_for_haiku_x86_64(self):
         with mock.patch.object(detectinfo.platform, "system", return_value="Haiku"), \
@@ -147,6 +298,9 @@ class HaikuPortTests(unittest.TestCase):
         compiler = self._read("make", "compile_os_haiku_control.py")
 
         self.assertIn('CONTROL_APP="$APP_DIR/Haikonnect"', installer)
+        self.assertIn('CONFIG_FILE="$APP_DIR/core/config.json"', installer)
+        self.assertIn('chmod 600 "$CONFIG_FILE"', installer)
+        self.assertIn('chmod 600 "$SETTINGS_DIR/input.token"', installer)
         self.assertIn(
             'RUNTIME_PYTHON="$BIN_DIR/haikonnect-python3"', installer)
         self.assertIn(
@@ -171,6 +325,28 @@ class HaikuPortTests(unittest.TestCase):
             'cp make/native/dwservice_remote_input "$ADDON_DIR/',
             installer)
         self.assertIn('"Haikonnect"', compiler)
+
+    def test_uninstaller_is_scoped_and_preserves_credentials_by_default(self):
+        uninstaller = self._read("os_haiku", "uninstall-local.sh")
+        ignore = self._read(".gitignore")
+
+        self.assertIn('CONTROL_HELPER="$APP_DIR/os_haiku/', uninstaller)
+        self.assertIn('"$CONTROL_HELPER" stop', uninstaller)
+        self.assertIn("no files were removed", uninstaller)
+        self.assertIn('"$CONTROL_APP" --remove', uninstaller)
+        self.assertIn('rm -f "$DESKBAR_LINK" "$LAUNCH_FILE" "$INPUT_ADDON"',
+                      uninstaller)
+        self.assertIn('if [ "$PURGE" = true ]; then', uninstaller)
+        self.assertIn('rm -f "$CONFIG_FILE" "$AGENT_LOG"', uninstaller)
+        self.assertNotIn("ps |", uninstaller)
+        self.assertIn("/Haikonnect", ignore.splitlines())
+        self.assertIn("/core/sharedmem/", ignore.splitlines())
+
+    def test_doctor_rejects_unsafe_agent_config_permissions(self):
+        doctor = self._read("os_haiku", "doctor.py")
+
+        self.assertIn("config_security.is_private_file(config_path)", doctor)
+        self.assertIn('return 4', doctor)
 
     def test_control_helper_targets_only_published_process_ids(self):
         helper = self._read("os_haiku", "haikonnect-agent-control")

@@ -21,6 +21,7 @@ sys.path.insert(0, CORE)
 os.chdir(CORE)
 
 from app_desktop import common
+import config_security
 import detectinfo
 import native
 import utils
@@ -37,6 +38,15 @@ def main():
         "python": platform.python_version(),
         "is_haiku": utils.is_haiku(),
         "native_suffix": detectinfo.get_native_suffix(),
+    }
+    config_path = os.path.join(CORE, "config.json")
+    config_present = os.path.lexists(config_path)
+    config_mode = config_security.file_mode(config_path)
+    report["agent_config"] = {
+        "present": config_present,
+        "mode": config_security.mode_text(config_mode),
+        "private": not config_present
+            or config_security.is_private_file(config_path),
     }
     core = native.get_instance().get_library()
     report["dwaglib_loaded"] = core is not None
@@ -98,6 +108,8 @@ def main():
     print(json.dumps(report, indent=2, sort_keys=True))
     if not report["is_haiku"] or report["native_suffix"] != "haiku_x86_64":
         return 2
+    if not report["agent_config"]["private"]:
+        return 4
     if args.require_input and report.get("input_probe") != 0:
         return 3
     return 0

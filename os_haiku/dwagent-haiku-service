@@ -5,11 +5,14 @@
 # DWService Agent user-session supervisor for Haiku.
 
 APP_DIR="/boot/home/config/non-packaged/apps/DWService"
+CONFIG_FILE="$APP_DIR/core/config.json"
 SETTINGS_DIR="/boot/home/config/settings/DWService"
 LOG_DIR="/boot/home/config/cache/DWService"
 STATUS_FILE="$LOG_DIR/agent.status"
 SUPERVISOR_FILE="$LOG_DIR/supervisor.pid"
 PYTHON="/boot/home/config/non-packaged/bin/haikonnect-python3"
+
+umask 077
 
 HOME="/boot/home"
 PATH="/boot/home/config/non-packaged/bin:/boot/home/config/bin:/boot/system/non-packaged/bin:/boot/system/bin:/bin"
@@ -21,6 +24,21 @@ fi
 
 mkdir -p "$SETTINGS_DIR" "$LOG_DIR"
 chmod 700 "$SETTINGS_DIR" "$LOG_DIR"
+
+if [ -L "$CONFIG_FILE" ]; then
+	echo "Refusing symbolic-link agent configuration: $CONFIG_FILE" >&2
+	exit 1
+fi
+if [ -e "$CONFIG_FILE" ] && [ ! -f "$CONFIG_FILE" ]; then
+	echo "Refusing non-regular agent configuration: $CONFIG_FILE" >&2
+	exit 1
+fi
+if [ -f "$CONFIG_FILE" ]; then
+	if ! chmod 600 "$CONFIG_FILE"; then
+		echo "Could not set agent configuration mode to 0600: $CONFIG_FILE" >&2
+		exit 1
+	fi
+fi
 
 write_status()
 {
@@ -40,8 +58,8 @@ write_supervisor_pid()
 
 if [ ! -s "$SETTINGS_DIR/input.token" ]; then
 	"$PYTHON" -c 'import secrets; print(secrets.token_hex(32))' > "$SETTINGS_DIR/input.token"
-	chmod 600 "$SETTINGS_DIR/input.token"
 fi
+chmod 600 "$SETTINGS_DIR/input.token"
 
 child_pid=""
 stop_agent()

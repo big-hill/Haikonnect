@@ -40,6 +40,7 @@ jobs:
           sudo apt-get install -y shellcheck
           shellcheck os_haiku/haikonnect-agent-control
           shellcheck os_haiku/dwagent-haiku-service os_haiku/install-local.sh
+          shellcheck os_haiku/uninstall-local.sh
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v2
         env:

@@ -4,8 +4,7 @@ Thank you for helping improve the Haiku port.
 
 ## Ground rules
 
-- Base changes on the `haiku-port` branch unless a maintainer requests another
-  target.
+- Base changes on `master` unless a maintainer requests another target.
 - Keep upstream-compatible behavior outside Haiku-specific branches.
 - Never commit `core/config.json`, installation codes, agent keys, access
   tokens, logs, native build output or personal host details.
@@ -20,7 +19,7 @@ Run the portable test suite on any Python 3 host:
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 -m compileall -q core app_desktop app_filesystem make os_haiku
+python3 -m compileall -q core app_desktop app_filesystem app_shell make os_haiku tests
 ```
 
 On Haiku, also run:
@@ -32,6 +31,8 @@ python3 os_haiku/doctor.py --require-input
 ```
 
 For runtime changes, test a clean login/reboot and verify Screen, Filesystem,
-pointer, keyboard and clipboard from the web dashboard with SSH disconnected.
-Describe the tested Haiku revision, architecture and Python version in the pull
-request.
+Shell, pointer, keyboard and clipboard from the web dashboard with SSH
+disconnected. Confirm that `core/config.json` is mode `0600`, that uninstall
+preserves state by default, and that `git status --short` contains no generated
+runtime files. Describe the tested Haiku revision, architecture and Python
+version in the pull request.

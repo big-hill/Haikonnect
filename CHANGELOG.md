@@ -15,6 +15,8 @@ All notable Haikonnect changes will be documented here.
   process monitors without appearing as a separate Deskbar application.
 - Haiku-compatible Filesystem backend and file-backed inter-process screen maps.
 - Repository security policy, contribution guide, CI and secret scanning.
+- A scoped local uninstaller with separate preserve-state and `--purge` modes.
+- Safe configuration replacement, private backup and restore commands.
 
 ### Changed
 
@@ -22,6 +24,10 @@ All notable Haikonnect changes will be documented here.
   scoped cleanup of the former Deskbar replicant and private Python launcher.
 - Disabled unsupported upstream binary auto-updates, local HTTP listener and
   sound capture in generated Haiku source-mode configurations.
+- Report build stderr as warnings/output when the compiler exits successfully,
+  and show progress plus a total timeout during agent configuration.
+- Document the independent clean install and complete dashboard test on a
+  second physical x86_64 Haiku system running `hrev59917`.
 
 ### Fixed
 
@@ -33,3 +39,7 @@ All notable Haikonnect changes will be documented here.
   multi-click metadata.
 - Stage input add-on updates outside Haiku's monitored device directory so the
   final image is loaded under the correct name without waiting for a reboot.
+- Create and replace `core/config.json` atomically with mode `0600`, harden
+  existing installs in the installer, and make `doctor.py` reject unsafe modes.
+- Ignore the installed root controller and `core/sharedmem/` runtime state so a
+  normal source installation keeps `git status` clean.
